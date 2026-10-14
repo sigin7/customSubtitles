@@ -1,5 +1,8 @@
 import { spawn } from 'node:child_process';
 import { createApplication } from './server.js';
+import { fileURLToPath } from 'node:url';
+import packageInfo from '../package.json' with { type: 'json' };
+import { runStartupUpdate } from './updates.js';
 
 function openBrowser(url) {
   const command = process.platform === 'win32' ? 'rundll32.exe' : process.platform === 'darwin' ? 'open' : 'xdg-open';
@@ -10,6 +13,8 @@ function openBrowser(url) {
 
 let app;
 try {
+  const update = await runStartupUpdate({ root: fileURLToPath(new URL('../', import.meta.url)), currentVersion: packageInfo.version, skip: process.argv.includes('--skip-update-once') });
+  if (update.action !== 'continue') process.exit(0);
   app = createApplication();
   const { localUrl } = await app.start();
   if (process.env.OPEN_BROWSER !== 'false') openBrowser(localUrl);

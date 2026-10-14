@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.0
+
+- Check for newer stable GitHub releases when the installed Windows application starts.
+- Verify installer size, release SHA-256 checksum, and the GitHub asset digest before automatic installation.
+- Install updates silently and reopen the application using a separate updater runtime.
+- Keep the current version available when an update check or download fails; prevent concurrent updates.
+- Test the full installer update and restart process, including preservation of subtitles, password, and addon key.
+
 ## 1.1.1
 
 - Search movie and series metadata automatically while typing, after a 300 ms pause.

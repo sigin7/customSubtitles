@@ -77,6 +77,18 @@ After running the command manually, set the resulting public HTTPS origin in **C
 
 Funnel availability and throughput are subject to Tailscale's service limits. See the [official Funnel documentation](https://tailscale.com/docs/features/tailscale-funnel) and [CLI reference](https://tailscale.com/docs/reference/tailscale-cli/funnel).
 
+## Automatic updates
+
+From version 1.2.0, the installed Windows x64 application checks the latest stable [GitHub Release](https://github.com/sigin7/customSubtitles/releases/latest) every time it starts from its shortcut or `start.cmd`. A newer version is downloaded, verified against `SHA256SUMS.txt` and the GitHub asset digest when available, installed silently, and opened automatically. The startup console shows download and update progress.
+
+The updater runs before the server starts. It uses a separate temporary runtime so Windows can replace the bundled Node executable. Subtitles, password, addon key, connection settings, and an existing `.env` file are retained. Automatic updates skip Tailscale installation and preserve its configured routes.
+
+If GitHub is unreachable, rate-limited, or a download fails verification, the current application starts normally. Checks have an eight-second timeout; installer downloads have a five-minute timeout. Close an already-running server before launching again to check for updates. Only published stable versions newer than the installed version are accepted.
+
+Updates use `%LOCALAPPDATA%\CustomSubtitles\updates`; `last-update.json` records the latest installation result. Set `AUTO_UPDATE=false` in the installation directory's `.env` to disable startup updates. Source checkouts opened in VS Code are updated through Git and use the existing source-development commands.
+
+Install version 1.2.0 once to enable this behavior on an older installation. Later updates are automatic.
+
 ## Data, upgrades, and backups
 
 Installed application data lives in `%LOCALAPPDATA%\CustomSubtitles\data`. Source checkouts use `./data` by default. SQLite stores subtitles, the password hash, addon key, and saved connection settings.
@@ -117,13 +129,14 @@ Copy `.env.example` to `.env` if needed. Settings saved through the web interfac
 | `ADMIN_BASE_URL` | unset | Optional origin for an existing private administration proxy. |
 | `ADMIN_PASSWORD` | local first-run setup | Optional environment-managed password, 12–1024 characters. |
 | `OPEN_BROWSER` | `true` | Set to `false` on a headless server. |
+| `AUTO_UPDATE` | `true` for installed Windows x64 | Check and install newer stable GitHub releases at startup; set to `false` to disable. |
 | `DATA_DIR` | source `./data` or installed user data | Persistent data directory. |
 
 The administrator password is hashed with scrypt. Login sessions expire after 12 hours; rate limiting restricts failed login attempts. Uploaded files are validated and stored under generated IDs. The application does not provide video streams.
 
 ## Building a release on GitHub
 
-The **Windows release** GitHub Actions workflow validates the source, bundles the official Node runtime and verified Tailscale MSI, builds an Inno Setup installer, installs it on an isolated Windows runner, and checks that the bundled server and web interface start successfully.
+The **Windows release** GitHub Actions workflow validates the source, bundles the official Node runtime and verified Tailscale MSI, builds an Inno Setup installer, installs it on an isolated Windows runner, and checks server startup and the full automatic-update sequence. The update test verifies that the application reopens and preserves its password, addon key, and uploaded subtitles.
 
 To publish a version:
 
@@ -132,8 +145,8 @@ To publish a version:
 3. Create and push a matching version tag:
 
 ```powershell
-git tag v1.1.0
-git push origin v1.1.0
+git tag v1.2.0
+git push origin v1.2.0
 ```
 
 The workflow creates the GitHub Release with the `.exe` and `SHA256SUMS.txt` only after the installer checks pass. Manual workflow dispatch builds downloadable Actions artifacts without publishing a version.
