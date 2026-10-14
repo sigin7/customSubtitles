@@ -1,0 +1,26 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Custom Subtitles: server + web",
+      "program": "${workspaceFolder}/src/launcher.js",
+      "cwd": "${workspaceFolder}",
+      "runtimeArgs": ["--env-file-if-exists=.env"],
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Custom Subtitles: Windows Codex Node runtime",
+      "runtimeExecutable": "${env:USERPROFILE}/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe",
+      "runtimeArgs": ["--env-file-if-exists=.env"],
+      "program": "${workspaceFolder}/src/launcher.js",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ]
+}

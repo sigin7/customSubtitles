@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#111116"><title>Custom Subtitles · Tvoja knižnica</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+<svg class="svg-defs" aria-hidden="true"><defs>
+  <symbol id="i-sub" viewBox="0 0 24 24"><path d="M4 4h16v13H11l-5 4v-4H4z"/><path d="M8 9h8M8 13h5"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="m10 13 4-4M8 16l-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0M16 8l1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0" transform="translate(1 0) scale(.9)"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></symbol>
+  <symbol id="i-tv" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="m8 3 4 4 4-4"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M15 8V3H3v13h5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></symbol>
+</defs></svg>
+<div id="login-screen" class="login-screen" hidden>
+  <form id="login-form" class="login-card">
+    <img src="/favicon.svg" width="48" height="48" alt=""><h1>Tvoja knižnica čaká.</h1>
+    <p>Prihlás sa a spravuj svoje titulky.</p><label for="password">Heslo správcu</label>
+    <input id="password" name="password" type="password" required autocomplete="current-password">
+    <button class="primary" type="submit">Prihlásiť sa <svg><use href="#i-arrow"/></svg></button><p id="login-error" class="error" role="alert"></p>
+  </form>
+</div>
+<div id="app" class="app-shell" hidden>
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="Custom Subtitles"><img src="/favicon.svg" width="35" height="35" alt=""><span>custom<span class="brand-light">subtitles</span></span></a>
+    <p class="nav-label">TVOJ PRIESTOR</p>
+    <nav aria-label="Hlavná navigácia">
+      <button id="nav-library" class="nav-item active"><svg><use href="#i-grid"/></svg>Knižnica<span id="nav-count" class="count">0</span></button>
+      <button id="nav-upload" class="nav-item"><svg><use href="#i-plus"/></svg>Pridať titulky</button>
+      <button id="nav-settings" class="nav-item"><svg><use href="#i-link"/></svg>Pripojenie</button>
+    </nav>
+    <div class="sidebar-note"><div class="tiny-icon"><svg><use href="#i-sub"/></svg></div><strong>Tvoje titulky.<br>Tvoje zariadenia.</strong><p>Jedna knižnica pre všetko,<br>čo sleduješ v Stremio.</p><span>OSOBNÝ ADDON <span class="mini-dot"></span></span></div>
+    <div class="sidebar-bottom"><span class="status-dot"></span><div><strong id="server-status">Server je online</strong><small id="server-address">Lokálny server</small></div></div>
+  </aside>
+  <main>
+    <header class="topbar"><div class="breadcrumb">Tvoj priestor <span>/</span> <strong>Knižnica titulkov</strong></div><div class="topbar-right"><span class="private-badge"><svg><use href="#i-globe"/></svg>Osobná knižnica</span><button id="logout" class="text-button" hidden>Odhlásiť</button><span class="avatar">CS</span></div></header>
+    <div class="content">
+      <section class="page-heading"><div><span class="eyebrow">VŠETKO NA JEDNOM MIESTE</span><h1>Titulky, presne tam,<br>kde ich potrebuješ<span class="purple">.</span></h1><p>Nahraj súbor. Priraď film alebo epizódu. Sleduj v Stremio.</p></div><button id="heading-upload" class="primary"><svg><use href="#i-plus"/></svg>Pridať titulky</button></section>
+      <section class="stats" aria-label="Štatistiky knižnice">
+        <article class="stat"><div class="stat-label">Všetky titulky<svg><use href="#i-sub"/></svg></div><div><strong id="stat-total">0</strong><span>súborov v knižnici</span></div></article>
+        <article class="stat"><div class="stat-label">Filmy<svg><use href="#i-film"/></svg></div><div><strong id="stat-movies">0</strong><span>unikátnych filmov</span></div></article>
+        <article class="stat"><div class="stat-label">Epizódy<svg><use href="#i-tv"/></svg></div><div><strong id="stat-episodes">0</strong><span>epizód seriálov</span></div></article>
+        <article class="stat"><div class="stat-label">Jazyky<svg><use href="#i-globe"/></svg></div><div><strong id="stat-languages">0</strong><span>jazykov titulkov</span></div></article>
+      </section>
+      <div class="workspace">
+        <section id="library-panel" class="panel library-panel">
+          <div class="panel-heading"><div><h2>Tvoja knižnica</h2><p>Pripravené na ďalší filmový večer.</p></div><span class="quiet-pill" id="library-count">0 titulkov</span></div>
+          <div class="library-tools"><div class="tabs" role="group" aria-label="Typ titulkov"><button data-filter="all" class="selected">Všetko</button><button data-filter="movie">Filmy</button><button data-filter="series">Seriály</button></div><label class="library-search"><svg><use href="#i-search"/></svg><input id="library-search" type="search" placeholder="Hľadať v knižnici…" aria-label="Hľadať v knižnici"></label></div>
+          <div id="library-list" class="library-list" aria-live="polite"></div>
+          <div id="library-empty" class="empty-state"><div class="empty-art"><div class="art-back"></div><div class="art-front"><svg><use href="#i-sub"/></svg><span></span><span></span></div></div><h3>Prvý príbeh sa začína tu.</h3><p>Tvoja knižnica je zatiaľ prázdna.<br>Pridaj titulky k filmu alebo obľúbenému seriálu.</p><button id="empty-upload" class="secondary"><svg><use href="#i-plus"/></svg>Nahrať prvé titulky</button></div>
+          <div class="library-footer"><span class="status-dot"></span>Titulky sa ukladajú na tomto serveri.<span id="storage-size">0 KB</span></div>
+        </section>
+        <section id="upload-panel" class="panel upload-panel">
+          <div class="panel-heading"><div><h2>Nové titulky</h2><p>Od súboru k filmu v troch krokoch.</p></div><span class="round-icon"><svg><use href="#i-upload"/></svg></span></div>
+          <form id="upload-form">
+            <div class="step-title"><span>1</span>Vyber film alebo seriál</div>
+            <div class="type-switch"><label><input type="radio" name="type" value="movie" checked><span><svg><use href="#i-film"/></svg>Film</span></label><label><input type="radio" name="type" value="series"><span><svg><use href="#i-tv"/></svg>Seriál</span></label></div>
+            <div class="meta-search"><input id="meta-query" type="search" placeholder="Názov alebo IMDb ID…" aria-label="Vyhľadať film alebo seriál"><button id="meta-search" type="button" aria-label="Vyhľadať"><svg><use href="#i-search"/></svg></button></div>
+            <p id="search-status" class="field-note" role="status">Vyhľadávanie používa metadáta Cinemeta.</p>
+            <div id="search-results" class="search-results"></div><div id="selected-meta" class="selected-meta" hidden></div>
+            <details id="manual-meta" open><summary>Zadať alebo upraviť údaje ručne</summary><div class="field-grid"><label>Názov<input name="title" id="title" maxlength="200" required placeholder="napr. Inception"></label><label>IMDb ID<input name="imdbId" id="imdbId" pattern="tt[0-9]{7,10}" required placeholder="tt1375666"></label></div></details>
+            <div id="episode-fields" class="field-grid" hidden><label>Séria<input name="season" id="season" type="number" min="0" max="999" value="1"></label><label>Epizóda<input name="episode" id="episode" type="number" min="1" max="9999" value="1"></label></div>
+            <div class="step-title"><span>2</span>Pridaj súbor s titulkami</div>
+            <label id="drop-zone" class="drop-zone" tabindex="0"><input name="file" id="file" type="file" accept=".srt,.vtt,.ass,.ssa" required><svg><use href="#i-upload"/></svg><strong id="file-name">Presuň súbor alebo <span>vyber z počítača</span></strong><small id="file-info">SRT, VTT, ASS, SSA · max. 10 MB</small></label>
+            <div class="step-title"><span>3</span>Dolaď detaily</div>
+            <div class="field-grid"><label>Jazyk<select name="lang" id="lang"><option value="slo">Slovenčina</option><option value="cze">Čeština</option><option value="eng">English</option><option value="hun">Magyar</option><option value="pol">Polski</option><option value="ger">Deutsch</option><option value="ukr">Українська</option><option value="spa">Español</option><option value="fre">Français</option></select></label><label>Kódovanie<select name="encoding"><option value="auto">Automaticky</option><option value="utf-8">UTF-8</option><option value="windows-1250">Windows-1250</option><option value="windows-1252">Windows-1252</option><option value="utf-16le">UTF-16 LE</option><option value="utf-16be">UTF-16 BE</option></select></label></div>
+            <label class="full-label">Verzia titulkov <span>voliteľné</span><input name="label" maxlength="120" placeholder="napr. 1080p BluRay alebo WEB-DL"></label>
+            <p id="upload-error" class="error" role="alert" hidden></p><button id="upload-submit" type="submit" class="primary upload-submit"><svg><use href="#i-upload"/></svg>Nahrať do knižnice</button><p class="upload-note"><svg><use href="#i-check"/></svg>Po nahratí dostupné v addone pre dané video.</p>
+          </form>
+        </section>
+      </div>
+      <section class="connect-banner"><div class="connect-icon"><svg><use href="#i-link"/></svg></div><div><h3>Malá knižnica. Veľká obrazovka.</h3><p>Pripoj addon k Stremio a vezmi si titulky na svoje zariadenia cez Tailscale.</p></div><button id="banner-settings" class="secondary">Pripojiť Stremio <svg><use href="#i-arrow"/></svg></button></section>
+      <footer class="page-footer"><span>CUSTOM SUBTITLES <span>v1.0</span></span><span>Pre tvoje filmové večery.</span></footer>
+    </div>
+  </main>
+</div>
+<dialog id="settings-dialog" class="settings-dialog"><div class="dialog-heading"><div><span class="eyebrow">TVOJE ZARIADENIA</span><h2>Pripojenie k Stremio</h2></div><button id="close-settings" class="close-button" aria-label="Zavrieť">×</button></div><p>Všetky zariadenia musia byť v rovnakej Tailscale sieti. Server musí zostať spustený.</p>
+  <div class="settings-step"><span class="step-number">1</span><div><h3>Zapni HTTPS cez Tailscale</h3><p id="tailscale-status">Kontrolujem Tailscale…</p><div class="copy-field"><code id="tailscale-command">tailscale serve --bg http://127.0.0.1:7000</code><button id="copy-command" aria-label="Kopírovať príkaz"><svg><use href="#i-copy"/></svg></button></div><a href="https://tailscale.com/docs/features/tailscale-serve" target="_blank" rel="noreferrer">Návod pre Tailscale Serve ↗</a></div></div>
+  <form id="settings-form" class="settings-step"><span class="step-number">2</span><div><h3>Nastav adresu servera</h3><label for="base-url">Adresa dostupná z ostatných zariadení</label><input id="base-url" name="baseUrl" type="url" required placeholder="https://moj-pc.moja-siet.ts.net"><p class="field-note">Použi HTTPS adresu, ktorú vypíše Tailscale Serve.</p><button class="secondary" id="save-settings" type="submit">Uložiť adresu</button><p id="settings-error" class="error" role="alert" hidden></p></div></form>
+  <div class="settings-step"><span class="step-number">3</span><div><h3>Nainštaluj addon</h3><p>V Stremio otvor Addons, vlož túto adresu a potvrď inštaláciu.</p><div class="copy-field"><input id="addon-url" readonly aria-label="Adresa manifestu addonu"><button id="copy-addon" aria-label="Kopírovať adresu addonu"><svg><use href="#i-copy"/></svg></button></div><a id="install-addon" class="primary" href="#">Otvoriť v Stremio <svg><use href="#i-arrow"/></svg></a><p id="local-address-note" class="field-note">Lokálna adresa funguje iba na tomto počítači.</p></div></div><p id="auth-note" class="auth-note"></p>
+</dialog>
+<dialog id="delete-dialog" class="delete-dialog"><h2>Odstrániť titulky?</h2><p id="delete-message"></p><div class="dialog-actions"><button id="cancel-delete" class="secondary">Ponechať</button><button id="confirm-delete" class="danger">Odstrániť</button></div></dialog>
+<div id="toast" class="toast" role="status" hidden></div>
+</body></html>
