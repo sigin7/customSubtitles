@@ -42,7 +42,7 @@ If you installed an older addon using a private Tailscale Serve URL, remove that
 
 ## Uploading and matching subtitles
 
-1. Select **Movie** or **Series**. Search by title or IMDb ID and select the correct result. Cinemeta metadata search requires internet access; manual title and IMDb entry works offline.
+1. Select **Movie** or **Series**. Type a title or IMDb ID; results appear automatically after at least two characters and a short pause. Select the correct result. Enter and the search button also search immediately. Cinemeta metadata search requires internet access; manual title and IMDb entry works offline.
 2. For series, specify the season and episode. Season `0` is supported for specials.
 3. Drop or select one `.srt`, `.vtt`, `.ass`, or `.ssa` file, up to 10 MB. Select its language and optionally label the release version, such as `1080p BluRay`.
 4. Click **Upload to library**. Identical content with the same video, language, and version label is not inserted twice.

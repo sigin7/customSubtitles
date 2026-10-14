@@ -1,5 +1,6 @@
 const $ = selector => document.querySelector(selector);
 let config, rows = [], filter = 'all', pendingDelete, searchSequence = 0, toastTimer, loginNeedsSetup = false;
+let searchTimer, searchController;
 
 function node(tag, className, text) {
   const element = document.createElement(tag);
@@ -127,7 +128,7 @@ for (const button of document.querySelectorAll('[data-filter]')) button.addEvent
 });
 
 function clearSelection() {
-  searchSequence++;
+  cancelMetadataSearch();
   $('#selected-meta').hidden = true; $('#search-results').replaceChildren();
   $('#title').value = ''; $('#imdbId').value = ''; $('#manual-meta').open = true;
 }
@@ -136,15 +137,36 @@ function updateType() {
   $('#episode-fields').hidden = !series;
   $('#season').required = series; $('#episode').required = series;
 }
-for (const input of document.querySelectorAll('input[name="type"]')) input.addEventListener('change', () => { clearSelection(); updateType(); });
+for (const input of document.querySelectorAll('input[name="type"]')) input.addEventListener('change', () => { clearSelection(); updateType(); scheduleMetadataSearch(); });
+
+function cancelMetadataSearch() {
+  clearTimeout(searchTimer);
+  searchSequence++;
+  searchController?.abort();
+  searchController = undefined;
+  $('#meta-search').disabled = false;
+}
+function scheduleMetadataSearch() {
+  cancelMetadataSearch();
+  $('#search-results').replaceChildren();
+  if ($('#meta-query').value.trim().length < 2) {
+    $('#search-status').textContent = 'Enter at least two characters.';
+    return;
+  }
+  $('#search-status').textContent = 'Searching metadata…';
+  searchTimer = setTimeout(searchMetadata, 300);
+}
 
 async function searchMetadata() {
+  cancelMetadataSearch();
   const query = $('#meta-query').value.trim();
+  $('#search-results').replaceChildren();
   if (query.length < 2) { $('#search-status').textContent = 'Enter at least two characters.'; return; }
-  const sequence = ++searchSequence;
-  $('#meta-search').disabled = true; $('#search-status').textContent = 'Searching metadata…'; $('#search-results').replaceChildren();
+  const sequence = searchSequence;
+  searchController = new AbortController();
+  $('#meta-search').disabled = true; $('#search-status').textContent = 'Searching metadata…';
   try {
-    const { metas } = await api(`/api/meta?type=${videoType()}&q=${encodeURIComponent(query)}`);
+    const { metas } = await api(`/api/meta?type=${videoType()}&q=${encodeURIComponent(query)}`, { signal: searchController.signal });
     if (sequence !== searchSequence) return;
     $('#search-status').textContent = metas.length ? 'Select the correct result.' : 'No results found. You can enter the details manually.';
     for (const meta of metas) {
@@ -159,9 +181,10 @@ async function searchMetadata() {
       });
       $('#search-results').append(button);
     }
-  } catch (error) { if (sequence === searchSequence) { $('#search-status').textContent = error.message; $('#manual-meta').open = true; } }
-  finally { $('#meta-search').disabled = false; }
+  } catch (error) { if (sequence === searchSequence && error.name !== 'AbortError') { $('#search-status').textContent = error.message; $('#manual-meta').open = true; } }
+  finally { if (sequence === searchSequence) { searchController = undefined; $('#meta-search').disabled = false; } }
 }
+$('#meta-query').addEventListener('input', scheduleMetadataSearch);
 $('#meta-search').addEventListener('click', searchMetadata);
 $('#meta-query').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); searchMetadata(); } });
 
@@ -177,7 +200,7 @@ async function fileChanged() {
     const hints = await api(`/api/hints?filename=${encodeURIComponent(file.name)}`);
     if ($('#file').files[0] !== file) return;
     if (hints.season !== null) {
-      if (videoType() !== 'series') { $('input[name="type"][value="series"]').checked = true; clearSelection(); updateType(); }
+      if (videoType() !== 'series') { $('input[name="type"][value="series"]').checked = true; clearSelection(); updateType(); scheduleMetadataSearch(); }
       $('#season').value = hints.season; $('#episode').value = hints.episode;
     }
     if (hints.imdbId && !$('#imdbId').value) $('#imdbId').value = hints.imdbId;

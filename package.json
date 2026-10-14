@@ -1,6 +1,6 @@
 {
   "name": "custom-subtitles",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "description": "Personal Stremio subtitle library with a web upload interface",
   "type": "module",

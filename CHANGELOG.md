@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1
+
+- Search movie and series metadata automatically while typing, after a 300 ms pause.
+- Cancel outdated searches and prevent stale results from replacing the current query.
+- Refresh results when switching movie and series types; keep Enter and button search available.
+
 ## 1.1.0
 
 - Translate the interface, documentation, and application output into English.
