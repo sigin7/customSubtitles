@@ -1,0 +1,21 @@
+Custom Subtitles
+
+This installer includes Node.js 24 LTS and the official Tailscale Windows installer.
+Node.js is installed privately with this application and does not change your system PATH.
+Tailscale is installed only if missing and you select its installation task.
+
+Tailscale installation may require a Windows administrator prompt. Signing into
+your own Tailscale account and enabling Funnel are separate first-run steps.
+Tailscale is required on the server only; playback devices do not need it.
+
+Node.js license: https://github.com/nodejs/node/blob/main/LICENSE
+Tailscale license: https://github.com/tailscale/tailscale/blob/main/LICENSE
+Tailscale Terms of Service: https://tailscale.com/terms
+Tailscale Privacy Policy: https://tailscale.com/privacy-policy
+
+Third-party license texts are included in the installed licenses directory.
+By continuing with the Tailscale installation task, you acknowledge that the
+Tailscale software and services are governed by its license and service terms.
+
+The application stores your subtitles, password hash, and addon key in your user
+data directory. Updates and uninstalling the application preserve that directory.

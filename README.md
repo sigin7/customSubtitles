@@ -1,98 +1,147 @@
 # Custom Subtitles
 
-Osobný Stremio addon a webové rozhranie na nahrávanie titulkov. Jeden proces spustí server a otvorí stránku. Titulky zostávajú na tvojom počítači; z ďalších zariadení sa pripájaš cez Tailscale.
+A personal Stremio subtitle addon with a web upload interface. Run it on your Windows server, upload your subtitle files, and select them when watching the matching movie or episode.
 
-## Spustenie
+**Only the server needs Tailscale. Your playback devices do not.** Tailscale Funnel provides a public HTTPS address that compatible Stremio clients can reach over a normal internet connection.
 
-Potrebuješ **Node.js 24 alebo novší**: [nodejs.org](https://nodejs.org/). Nie sú potrebné žiadne npm balíky ani API kľúč.
+## Download and install
 
-Vo Windows otvor `start.cmd`, alebo v termináli VS Code spusti:
+Download the latest `CustomSubtitles-…-Setup-x64.exe` from [GitHub Releases](https://github.com/sigin7/customSubtitles/releases/latest).
+
+The Windows 10/11 x64 installer includes:
+
+- A private Node.js 24 LTS runtime. No separate Node.js or npm installation is needed.
+- The application, web interface, and desktop/Start Menu shortcuts.
+- The official Tailscale installer, installed automatically if missing and its setup task is selected. Windows will request administrator approval for Tailscale installation.
+
+The application itself installs for your user under `%LOCALAPPDATA%\Programs\CustomSubtitles`. It does not change your system PATH. Tailscale remains a separate installed application.
+
+1. Run the installer and open **Custom Subtitles** from its shortcut.
+2. The server starts and opens `http://127.0.0.1:7000`. Create an administrator password of at least 12 characters in this local interface.
+3. Sign into Tailscale **on the server only**. This account login cannot be automated by the installer.
+4. Open **Connection → Enable public access**. If Tailscale requests permission to enable Funnel, open the provided account link, approve it, and click the button again.
+5. The public address will look like `https://your-server.your-tailnet.ts.net:8443`. Use **Open in Stremio**, or copy the complete addon manifest address into Stremio's Addons screen.
+
+Leave the server console open while using the addon. Press **Ctrl+C** to stop it. Closing the console also stops the application. Funnel may remain configured in the background, but it cannot serve subtitles while the application is stopped. The server computer must stay awake.
+
+The installer is currently unsigned. Release artifacts include `SHA256SUMS.txt`; the bundled runtime and Tailscale installer are checked against their official published checksums during the build.
+
+## Playback devices without Tailscale
+
+Install the **public HTTPS addon address** in your Stremio client or synchronize it through your Stremio account. The URL contains a private read-only key:
+
+```text
+https://your-server.your-tailnet.ts.net:8443/addon/<private-key>/manifest.json
+```
+
+Your Xiaomi/Android TV box, phone, Apple TV, or other client needs only internet access and a player that supports the Stremio subtitle-addon protocol. Device-specific client support still matters: a reachable HTTPS server cannot add subtitle-addon support to a client that lacks it. Keep the full URL private.
+
+You can also open the public web interface from a normal browser without Tailscale. Library management and uploads require your administrator password. First-run password creation and enabling public network access are available only through the local interface on the server.
+
+If you installed an older addon using a private Tailscale Serve URL, remove that version and install the new public address. Existing subtitles and the addon key are retained when upgrading the source project.
+
+## Uploading and matching subtitles
+
+1. Select **Movie** or **Series**. Search by title or IMDb ID and select the correct result. Cinemeta metadata search requires internet access; manual title and IMDb entry works offline.
+2. For series, specify the season and episode. Season `0` is supported for specials.
+3. Drop or select one `.srt`, `.vtt`, `.ass`, or `.ssa` file, up to 10 MB. Select its language and optionally label the release version, such as `1080p BluRay`.
+4. Click **Upload to library**. Identical content with the same video, language, and version label is not inserted twice.
+
+Movies match IMDb IDs such as `tt1375666`. Episodes match the series IMDb ID plus season and episode, such as `tt0903747:1:2`. The display title does not determine matching. Filenames can suggest `S01E02`, `1x02`, IMDb IDs, and SK/CZ/EN language markers; review these suggestions before uploading.
+
+Videos identified exclusively by `tmdb:` or another addon's custom IDs are not matched. Multiple subtitle versions can be provided for the same video, but you choose the version with the right timing for your stream. Automatic timing correction is not included.
+
+Uploads are normalized to UTF-8. Automatic decoding supports UTF-8, UTF-16 with a BOM, and Windows-1250 when UTF-8 decoding fails. Select the encoding manually if needed. ASS/SSA styles are preserved; rendering depends on your player and its settings.
+
+## Public HTTPS architecture
+
+```text
+Any device / Stremio client
+    → public HTTPS :8443
+    → Tailscale Funnel on the server
+    → protected gateway on 127.0.0.1:7001
+    → web interface / password-protected API / keyed subtitle addon
+
+Server browser
+    → local interface on 127.0.0.1:7000
+    → first-run owner setup and network configuration
+```
+
+The application preserves unrelated Tailscale routes. The default public Funnel port is `8443`, so an existing private Serve route on HTTPS `443` can remain intact. A conflicting route on the selected port is reported instead of overwritten. The optional command equivalent is:
+
+```powershell
+tailscale funnel --bg --https=8443 http://127.0.0.1:7001
+```
+
+After running the command manually, set the resulting public HTTPS origin in **Connection**. Funnel is public internet access; ordinary Tailscale Serve remains private and would require Tailscale on clients. The gateway refuses public addon access until the administrator password is configured, rejects remote owner setup, and requires authentication for uploads, settings, and deletion. Subtitle playback uses only the read-only key, so TV clients never need your administrator password.
+
+Funnel availability and throughput are subject to Tailscale's service limits. See the [official Funnel documentation](https://tailscale.com/docs/features/tailscale-funnel) and [CLI reference](https://tailscale.com/docs/reference/tailscale-cli/funnel).
+
+## Data, upgrades, and backups
+
+Installed application data lives in `%LOCALAPPDATA%\CustomSubtitles\data`. Source checkouts use `./data` by default. SQLite stores subtitles, the password hash, addon key, and saved connection settings.
+
+Updates and uninstall preserve the installed user data directory. Stop the application before backing up the entire data directory, including any SQLite WAL files. Run one application instance per database.
+
+To move a library from a source checkout into an installed application, stop both instances and copy the source `data` directory into `%LOCALAPPDATA%\CustomSubtitles\data` before opening the installed version. Preserve a backup. Uninstalling Custom Subtitles does not uninstall Tailscale.
+
+`.env`, subtitle databases, build output, and local user data are excluded from Git and from release payloads. If you choose a custom data directory inside the repository, add it to `.gitignore`.
+
+## Source development in VS Code
+
+Install Node.js 24 LTS, clone the repository, and open its folder in VS Code. No npm dependencies are required.
 
 ```powershell
 node --env-file-if-exists=.env src/launcher.js
 ```
 
-Ak máš npm, funguje aj `npm start`. Vo VS Code môžeš stlačiť **F5** a vybrať `Custom Subtitles: server + web`. Ak vo Windows nemáš systémový Node.js, `start.cmd` skúsi aj existujúci Node runtime aplikácie Codex. Preň je pripravená druhá F5 konfigurácia `Custom Subtitles: Windows Codex Node runtime`. Na ostatných počítačoch nainštaluj štandardný Node.js 24 LTS.
-
-Rozhranie sa otvorí na **http://127.0.0.1:7000**. Terminál nechaj otvorený. `Ctrl+C` zastaví server. Na serveri bez obrazovky nastav `OPEN_BROWSER=false` v `.env`, alebo spusti `node --env-file-if-exists=.env src/server.js`.
-
-## Nahratie a párovanie
-
-1. Vyber **film** alebo **seriál** a vyhľadaj názov či IMDb ID. Vyber správny výsledok. Vyhľadávanie používa Cinemeta, predvolený zdroj metadát Stremio; potrebuje internet. Názov a IMDb ID môžeš zadať aj ručne bez internetu.
-2. Pri seriáli vyber sériu a epizódu. Séria 0 je povolená pre špeciály.
-3. Vyber alebo presuň **jeden súbor** `.srt`, `.vtt`, `.ass` alebo `.ssa` do 10 MB. Nastav jazyk a prípadne označenie verzie, napr. `1080p BluRay`.
-4. Klikni **Nahrať do knižnice**. Rovnaký obsah, video, jazyk a označenie sa nevložia druhýkrát.
-
-Film sa páruje podľa IMDb ID, napr. `tt1375666`. Seriál sa páruje podľa ID celého seriálu, série a epizódy, napr. `tt0903747:1:2`. Názov slúži na zobrazenie v knižnici. Názov súboru môže predvyplniť `S01E02`, `1x02`, IMDb ID a SK/CZ/EN jazyk; tieto údaje pred nahratím skontroluj. Samotný názov súboru neurčuje spoľahlivo film.
-
-Addon poskytuje titulky pre videá s IMDb ID. Videá identifikované iba pomocou `tmdb:` alebo vlastných ID iného addonu sa nepárujú. Viac verzií k jednému videu je možné; správne časovanie vzhľadom na konkrétny stream musíš vybrať ty. Titulky sa automaticky neposúvajú ani nesynchronizujú.
-
-Text sa pri nahratí prevedie do UTF-8. Automatická detekcia podporuje UTF-8, UTF-16 s BOM a pri neplatnom UTF-8 skúsi Windows-1250 pre slovenské a české titulky. Ak text nesedí, vyber kódovanie ručne. ASS/SSA zachovajú pôvodné štýly; ich vykreslenie závisí od prehrávača a jeho nastavení.
-
-## Tailscale a Stremio na ďalších zariadeniach
-
-1. Nainštaluj [Tailscale](https://tailscale.com/download) na server aj klientské zariadenia a prihlás ich do rovnakej siete.
-2. Nechaj túto aplikáciu spustenú a v samostatnom termináli na serveri spusti:
+`npm start`, `start.cmd`, and the **Custom Subtitles: server + web** F5 configuration also work. On this Windows machine, the alternate F5 configuration can use the existing Codex Node runtime if system Node is unavailable.
 
 ```powershell
-tailscale serve --bg http://127.0.0.1:7000
-```
-
-3. Ak Tailscale vyžiada zapnutie HTTPS, dokonči jeho pokyny. Príkaz vypíše adresu ako `https://moj-pc.moja-siet.ts.net`.
-4. V lokálnom webovom rozhraní otvor **Pripojenie**, vlož vypísanú HTTPS adresu a ulož ju. Alternatívne nastav `BASE_URL` v `.env` pred spustením.
-5. Skopíruj z rozhrania **celú adresu manifestu**. Obsahuje trvalý prístupový kľúč: `https://…/addon/<kluc>/manifest.json`. V Stremio otvor **Addons** a vlož adresu, alebo použi **Otvoriť v Stremio**.
-6. Na ďalšom zariadení nechaj Tailscale pripojený. Web otvoríš na rovnakej HTTPS adrese; pri danom filme/epizóde sa titulky objavia v ponuke prehrávača.
-
-`Tailscale Serve` sprístupňuje server v tvojej Tailscale sieti cez HTTPS. Pri prvom prístupe musí byť adresa už nastavená lokálne, inak server odmietne neznámy Host. HTTPS je vhodné aj pre Stremio Web, kde môže byť vzdialené HTTP blokované. Dostupnosť Tailscale a vlastných addonov over na svojom konkrétnom TV alebo mobilnom klientovi. Server musí byť zapnutý a nesmie spať. Synchronizácia addonu v Stremio účte sama osebe nenahrádza Tailscale pripojenie.
-
-Pri zmene adresy servera odinštaluj addon so starou adresou a nainštaluj aktuálnu adresu. Už otvorené prehrávanie môže mať titulky v pamäti; po uploadovaní znova otvor výber titulkov alebo prehrávanie.
-
-## Nastavenia a súkromie
-
-Skopíruj `.env.example` do `.env`, ak chceš zmeniť nastavenia:
-
-| Premenná | Predvolená hodnota | Význam |
-| --- | --- | --- |
-| `HOST` | `127.0.0.1` | Lokálne počúvanie vhodné pre Tailscale Serve. |
-| `PORT` | `7000` | Port servera; pri zmene uprav aj Tailscale Serve. |
-| `BASE_URL` | adresa uložená v rozhraní alebo lokálna adresa | Adresa na inštaláciu addonu a sťahovanie titulkov. Nastavenie v `.env` má prednosť. |
-| `ADMIN_PASSWORD` | bez hesla | Voliteľné heslo správcu, aspoň 12 znakov. |
-| `OPEN_BROWSER` | `true` | Hodnota `false` vypne automatické otvorenie prehliadača. |
-| `DATA_DIR` | `./data` | Priečinok databázy, relatívny ku koreňu projektu. |
-
-Bez hesla môže knižnicu spravovať každý, kto sa dostane k rozhraniu cez tvoju Tailscale sieť. Prístup môžeš obmedziť pravidlami Tailscale a heslom `ADMIN_PASSWORD`. Pri nastavenom hesle sa na stránke zobrazí prihlasovanie; Stremio používa prístupový kľúč v URL a heslo správcu nepotrebuje. Kľúč neposielaj do verejných diskusií a screenshotov.
-
-Titulky a kľúč sú uložené v `data/library.sqlite`, nastavenia môžu vytvoriť aj WAL súbory. **Zálohuj celý priečinok `data/` po zastavení servera.** Súbory `.env`, databáza a nahrané titulky sú v `.gitignore`. Ak nastavíš vlastný `DATA_DIR` vnútri projektu, pridaj jeho cestu do `.gitignore`. Pre tú istú databázu používaj jednu inštanciu servera. Táto aplikácia neposkytuje video streamy.
-
-## Vývoj a testovanie
-
-```powershell
+node scripts/check.mjs
 node --test
 node --watch --env-file-if-exists=.env src/server.js
 ```
 
-S npm sú k dispozícii `npm test`, `npm run check` a `npm run dev`. Integračné testy overujú reálne HTTP nahrávanie a sťahovanie, Stremio manifest a dodatočné parametre, izoláciu epizód, neplatné súbory, veľkosť, duplikáty, pôvod požiadaviek, heslo, mazanie a obnovenie databázy. Vyhľadávanie metadát je v testoch nahradené kontrolovanou odpoveďou. GitHub Actions spúšťa testy na Windows aj Linuxe.
+## Configuration
 
-```text
-src/server.js      HTTP server, API, Stremio protokol, prihlásenie
-src/library.js     SQLite databáza a trvalý kľúč addonu
-src/subtitles.js   Overenie metadát, kódovanie a názvy súborov
-src/launcher.js    Spustenie servera a prehliadača
-public/           Slovenské webové rozhranie
-test/             Integračné testy
-```
+Copy `.env.example` to `.env` if needed. Settings saved through the web interface take precedence over the initial `BASE_URL` environment value.
 
-## Git
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `HOST` | `127.0.0.1` | Local administration listener. |
+| `PORT` | `7000` | Local web interface and server port. |
+| `PUBLIC_PORT` | `7001` | Loopback gateway used by Funnel. |
+| `FUNNEL_HTTPS_PORT` | `8443` | Public HTTPS port: `443`, `8443`, or `10000`. |
+| `BASE_URL` | saved origin or local address | Initial addon and subtitle-download origin. |
+| `ADMIN_BASE_URL` | unset | Optional origin for an existing private administration proxy. |
+| `ADMIN_PASSWORD` | local first-run setup | Optional environment-managed password, 12–1024 characters. |
+| `OPEN_BROWSER` | `true` | Set to `false` on a headless server. |
+| `DATA_DIR` | source `./data` or installed user data | Persistent data directory. |
 
-Zdrojový projekt je určený pre [sigin7/customSubtitles](https://github.com/sigin7/customSubtitles). Po úpravách:
+The administrator password is hashed with scrypt. Login sessions expire after 12 hours; rate limiting restricts failed login attempts. Uploaded files are validated and stored under generated IDs. The application does not provide video streams.
+
+## Building a release on GitHub
+
+The **Windows release** GitHub Actions workflow validates the source, bundles the official Node runtime and verified Tailscale MSI, builds an Inno Setup installer, installs it on an isolated Windows runner, and checks that the bundled server and web interface start successfully.
+
+To publish a version:
+
+1. Update `package.json`, `CHANGELOG.md`, and `RELEASE-NOTES.md`.
+2. Commit and push the source.
+3. Create and push a matching version tag:
 
 ```powershell
-git status
-git add .
-git commit -m "Update custom subtitles addon"
-git push origin main
+git tag v1.1.0
+git push origin v1.1.0
 ```
 
-Nahrané titulky, databázu ani `.env` nepridávaj cez `git add -f`.
+The workflow creates the GitHub Release with the `.exe` and `SHA256SUMS.txt` only after the installer checks pass. Manual workflow dispatch builds downloadable Actions artifacts without publishing a version.
 
-Protokol vychádza z [dokumentácie Stremio subtitles](https://github.com/Stremio/stremio-addon-sdk/blob/master/docs/api/responses/subtitles.md) a [Stremio manifestu](https://github.com/Stremio/stremio-addon-sdk/blob/master/docs/api/responses/manifest.md). Sieťové nastavenie vychádza z [oficiálneho Tailscale Serve návodu](https://tailscale.com/docs/reference/tailscale-cli/serve).
+For a local Windows build, use a fresh checkout with Node.js 24 LTS and Inno Setup 6 installed:
+
+```powershell
+powershell -NoProfile -File scripts/build-windows.ps1
+```
+
+See [third-party notices](THIRD_PARTY_NOTICES.md) for bundled dependency licenses. The addon follows the official [Stremio subtitle response](https://github.com/Stremio/stremio-addon-sdk/blob/master/docs/api/responses/subtitles.md) and [manifest](https://github.com/Stremio/stremio-addon-sdk/blob/master/docs/api/responses/manifest.md) specifications.

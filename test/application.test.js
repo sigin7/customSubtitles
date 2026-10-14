@@ -7,7 +7,7 @@ import { request as httpRequest } from 'node:http';
 import { createApplication } from '../src/server.js';
 import { prepareSubtitle, filenameHints } from '../src/subtitles.js';
 
-const srt = '1\n00:00:01,000 --> 00:00:03,000\nAhoj, svet!\n';
+const srt = '1\n00:00:01,000 --> 00:00:03,000\nHello, world!\n';
 const makeForm = (overrides = {}, text = srt, filename = 'Inception.sk.srt') => {
   const form = new FormData();
   const fields = { type: 'movie', title: 'Inception', imdbId: 'tt1375666', lang: 'slo', label: 'BluRay', encoding: 'auto', ...overrides };
@@ -17,16 +17,22 @@ const makeForm = (overrides = {}, text = srt, filename = 'Inception.sk.srt') => 
 
 test('upload, Stremio protocol, episode isolation, validation, deletion and persistence', async t => {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'custom-subtitles-test-'));
-  let app = createApplication({ host: '127.0.0.1', port: 0, dataDir: directory, password: '', tailscale: { available: false }, fetchMetadata: async () => Response.json({ metas: [{ id: 'tt1375666', name: 'Inception', releaseInfo: '2010' }, { id: 'tmdb:1', name: 'Ignore' }] }) });
+  let app = createApplication({ host: '127.0.0.1', port: 0, publicPort: false, dataDir: directory, password: 'integration-test-password', tailscale: { available: false }, fetchMetadata: async () => Response.json({ metas: [{ id: 'tt1375666', name: 'Inception', releaseInfo: '2010' }, { id: 'tmdb:1', name: 'Ignore' }] }) });
   let { localUrl } = await app.start();
   t.after(async () => { await app.close(); await rm(directory, { recursive: true, force: true }); });
-  const request = (url, options) => fetch(`${localUrl}${url}`, options);
+  const login = async () => {
+    const response = await fetch(`${localUrl}/api/login`, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: localUrl }, body: JSON.stringify({ password: 'integration-test-password' }) });
+    assert.equal(response.status, 200);
+    return response.headers.get('set-cookie').split(';')[0];
+  };
+  let cookie = await login();
+  const request = (url, options = {}) => fetch(`${localUrl}${url}`, { ...options, headers: { Cookie: cookie, ...options.headers } });
   const config = await (await request('/api/config')).json();
   const addonPath = new URL(config.addonUrl).pathname.replace('/manifest.json', '');
   let movie;
 
   await t.test('manifest and accessible web interface', async () => {
-    const page = await request('/'); assert.equal(page.status, 200); assert.match(await page.text(), /Tvoja knižnica/);
+    const page = await request('/'); assert.equal(page.status, 200); assert.match(await page.text(), /Your library/);
     const response = await request(`${addonPath}/manifest.json`); const manifest = await response.json();
     assert.equal(response.headers.get('access-control-allow-origin'), '*'); assert.deepEqual(manifest.resources[0].types, ['movie', 'series']);
     assert.equal((await request('/manifest.json')).status, 404);
@@ -75,8 +81,9 @@ test('upload, Stremio protocol, episode isolation, validation, deletion and pers
   });
   await t.test('database and addon key survive a complete server restart', async () => {
     await app.close();
-    app = createApplication({ host: '127.0.0.1', port: 0, dataDir: directory, password: '', tailscale: {} });
+    app = createApplication({ host: '127.0.0.1', port: 0, publicPort: false, dataDir: directory, password: 'integration-test-password', tailscale: {} });
     ({ localUrl } = await app.start());
+    cookie = await login();
     const configAfter = await (await request('/api/config')).json(); assert.equal(new URL(configAfter.addonUrl).pathname, new URL(config.addonUrl).pathname);
     assert.equal((await (await request('/api/subtitles')).json()).subtitles.length, 3);
     assert.equal((await (await request(`${addonPath}/subtitles/movie/tt1375666.json`)).json()).subtitles[0].id, movie.id);
@@ -94,7 +101,7 @@ test('upload, Stremio protocol, episode isolation, validation, deletion and pers
 
 test('password protects administration while Stremio uses its persistent read key', async t => {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'custom-subtitles-auth-'));
-  const app = createApplication({ host: '127.0.0.1', port: 0, dataDir: directory, password: 'test-private-password-123', tailscale: {} });
+  const app = createApplication({ host: '127.0.0.1', port: 0, publicPort: false, dataDir: directory, password: 'test-private-password-123', tailscale: {} });
   const { localUrl } = await app.start();
   t.after(async () => { await app.close(); await rm(directory, { recursive: true, force: true }); });
   assert.equal((await fetch(`${localUrl}/api/config`)).status, 401);
@@ -115,7 +122,7 @@ test('password protects administration while Stremio uses its persistent read ke
 
 test('encoding conversion and ASS styling preservation', () => {
   const bytes = Buffer.concat([Buffer.from('1\r\n00:00:01,000 --> 00:00:03,000\r\n'), Buffer.from([0x8e, 0x6c, 0x74, 0xfd]), Buffer.from('\r\n')]);
-  assert.match(prepareSubtitle('sk.srt', bytes, 'auto').content.toString(), /Žltý/);
+  assert.match(prepareSubtitle('sk.srt', bytes, 'auto').content.toString(), /\u017dlt\u00fd/);
   const ass = '[Script Info]\nTitle: Test\n[V4+ Styles]\n[Events]\nFormat: Layer, Start, End, Style, Text\nDialogue: 0,0:00:01.00,0:00:03.00,Default,{\\i1}Styled text\n';
   assert.equal(prepareSubtitle('test.ass', Buffer.from(ass), 'auto').content.toString(), ass);
   assert.deepEqual(filenameHints('Show.1x04.en.srt'), { season: 1, episode: 4, imdbId: '', lang: 'eng' });

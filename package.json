@@ -1,6 +1,6 @@
 {
   "name": "custom-subtitles",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Personal Stremio subtitle library with a web upload interface",
   "type": "module",
@@ -9,6 +9,7 @@
     "start": "node --env-file-if-exists=.env src/launcher.js",
     "dev": "node --env-file-if-exists=.env --watch src/server.js",
     "test": "node --test",
-    "check": "node --check src/server.js && node --check src/library.js && node --check src/subtitles.js && node --check src/launcher.js && node --check public/app.js"
+    "check": "node scripts/check.mjs",
+    "build:windows": "powershell -NoProfile -File scripts/build-windows.ps1"
   }
 }

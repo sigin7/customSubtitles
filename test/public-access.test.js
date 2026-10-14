@@ -1,0 +1,64 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { createApplication } from '../src/server.js';
+import { validateFunnelConfiguration } from '../src/network.js';
+
+const password = 'first-run-owner-password-123';
+const json = body => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+test('local owner setup, protected public uploads, persistent login, and public addon playback', async t => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'custom-subtitles-public-'));
+  const settings = { port: 0, publicPort: 0, dataDir: directory, password: '', baseUrl: '', tailscale: { running: true, publicEnabled: true }, enablePublicAccess: async () => ({ suggestedUrl: 'https://test.example.ts.net:8443', publicEnabled: true }) };
+  let app = createApplication(settings);
+  let urls = await app.start();
+  t.after(async () => { await app.close(); await rm(directory, { recursive: true, force: true }); });
+  const request = (origin, endpoint, options = {}) => fetch(origin + endpoint, { ...options, headers: { Origin: origin, ...options.headers } });
+  assert.equal((await request(urls.localUrl, '/api/config')).status, 401);
+  const localSession = await (await request(urls.localUrl, '/api/session')).json();
+  assert.equal(localSession.needsSetup, true); assert.equal(localSession.setupAllowed, true);
+  const publicSession = await (await request(urls.gatewayUrl, '/api/session')).json();
+  assert.equal(publicSession.setupAllowed, false);
+  assert.equal((await request(urls.gatewayUrl, `/addon/${app.library.getSetting('addonKey')}/manifest.json`)).status, 503);
+  assert.equal((await request(urls.gatewayUrl, '/api/setup', json({ password }))).status, 403);
+  assert.equal((await request(urls.localUrl, '/api/setup', { ...json({ password }), headers: { 'Content-Type': 'application/json', Origin: 'https://attacker.test' } })).status, 403);
+  assert.equal((await request(urls.localUrl, '/api/setup', json({ password: 'short' }))).status, 400);
+  const setup = await request(urls.localUrl, '/api/setup', json({ password })); assert.equal(setup.status, 201);
+  let localCookie = setup.headers.get('set-cookie').split(';')[0];
+  assert.equal((await request(urls.localUrl, '/api/setup', json({ password }))).status, 409);
+  assert.doesNotMatch(app.library.getSetting('adminCredential'), /first-run-owner-password/);
+  assert.equal((await request(urls.gatewayUrl, '/api/subtitles', { method: 'POST', body: new FormData() })).status, 401);
+  const login = await request(urls.gatewayUrl, '/api/login', json({ password })); assert.equal(login.status, 200);
+  const publicCookie = login.headers.get('set-cookie').split(';')[0];
+  assert.equal((await request(urls.gatewayUrl, '/api/network/public', { ...json({}), headers: { 'Content-Type': 'application/json', Cookie: publicCookie } })).status, 403);
+  const form = new FormData();
+  for (const [key, value] of Object.entries({ type: 'movie', title: 'Inception', imdbId: 'tt1375666', lang: 'eng' })) form.set(key, value);
+  form.set('file', new Blob(['1\n00:00:01,000 --> 00:00:03,000\nHello from a device without Tailscale.\n']), 'test.srt');
+  assert.equal((await request(urls.gatewayUrl, '/api/subtitles', { method: 'POST', headers: { Cookie: publicCookie }, body: form })).status, 201);
+  const config = await (await request(urls.gatewayUrl, '/api/config', { headers: { Cookie: publicCookie } })).json();
+  const addonPath = new URL(config.addonUrl).pathname.replace('/manifest.json', '');
+  const subtitles = await (await request(urls.gatewayUrl, `${addonPath}/subtitles/movie/tt1375666.json`)).json();
+  assert.equal(subtitles.subtitles.length, 1);
+  const filePath = new URL(subtitles.subtitles[0].url).pathname;
+  assert.match(await (await request(urls.gatewayUrl, filePath)).text(), /without Tailscale/);
+  const network = await request(urls.localUrl, '/api/network/public', { ...json({}), headers: { 'Content-Type': 'application/json', Cookie: localCookie } }); assert.equal(network.status, 200);
+  const publicResponse = await (await request(urls.gatewayUrl, `${addonPath}/subtitles/movie/tt1375666.json`)).json();
+  assert.match(publicResponse.subtitles[0].url, /^https:\/\/test\.example\.ts\.net:8443\//);
+  await app.close();
+  app = createApplication(settings); urls = await app.start();
+  const afterRestart = await request(urls.localUrl, '/api/login', json({ password })); assert.equal(afterRestart.status, 200);
+  localCookie = afterRestart.headers.get('set-cookie').split(';')[0];
+  const restored = await (await request(urls.localUrl, '/api/config', { headers: { Cookie: localCookie } })).json();
+  assert.equal(restored.baseUrl, 'https://test.example.ts.net:8443');
+  assert.equal((await (await request(urls.localUrl, '/api/subtitles', { headers: { Cookie: localCookie } })).json()).subtitles.length, 1);
+});
+
+test('Funnel preserves existing routes and accepts only its own target on the selected port', () => {
+  const configuration = { TCP: { 443: { HTTPS: true } }, Web: { 'test.ts.net:443': { Handlers: { '/': { Proxy: 'http://127.0.0.1:7000' } } } } };
+  assert.doesNotThrow(() => validateFunnelConfiguration(configuration, 'test.ts.net', 8443, 7001));
+  assert.throws(() => validateFunnelConfiguration(configuration, 'test.ts.net', 443, 7001), /already serves another/);
+  assert.throws(() => validateFunnelConfiguration({ TCP: { 8443: {} } }, 'test.ts.net', 8443, 7001), /already in use/);
+  assert.doesNotThrow(() => validateFunnelConfiguration({ TCP: { 8443: { HTTPS: true } }, Web: { 'test.ts.net:8443': { Handlers: { '/': { Proxy: 'http://127.0.0.1:7001' } } } } }, 'test.ts.net', 8443, 7001));
+});
