@@ -1,0 +1,4 @@
+# Local test credentials only. Never deploy these example values.
+ADMIN_PASSWORD=local-cloud-test-password
+SESSION_SECRET=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+ADDON_KEY=cccccccccccccccccccccccccccccccccccccccccccccccc

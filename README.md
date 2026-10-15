@@ -1,6 +1,10 @@
 # Custom Subtitles
 
-A personal Stremio subtitle addon with a web upload interface. Run it on your Windows server, upload your subtitle files, and select them when watching the matching movie or episode.
+A personal Stremio subtitle addon with a web upload interface. Upload your subtitle files and select them when watching the matching movie or episode.
+
+**Cloud hosting:** deploy on Cloudflare Workers with persistent D1 and KV storage to keep subtitles available while your PC is off. Playback devices need internet and a compatible Stremio client, with no Tailscale or helper app. Follow the [Cloudflare deployment guide](cloudflare/README.md). Its free plan has usage limits and no promise of uninterrupted availability.
+
+**Local hosting:** the Windows installer below runs the server on your PC with optional public access through Tailscale Funnel.
 
 **Only the server needs Tailscale. Your playback devices do not.** Tailscale Funnel provides a public HTTPS address that compatible Stremio clients can reach over a normal internet connection.
 
@@ -145,8 +149,8 @@ To publish a version:
 3. Create and push a matching version tag:
 
 ```powershell
-git tag v1.2.0
-git push origin v1.2.0
+git tag v1.3.0
+git push origin v1.3.0
 ```
 
 The workflow creates the GitHub Release with the `.exe` and `SHA256SUMS.txt` only after the installer checks pass. Manual workflow dispatch builds downloadable Actions artifacts without publishing a version.

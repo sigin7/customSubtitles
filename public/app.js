@@ -23,7 +23,7 @@ function showLogin(session = { needsSetup: false, setupAllowed: false }) {
   $('#app').hidden = true; $('#login-screen').hidden = false;
   $('#login-title').textContent = loginNeedsSetup ? 'Make this library yours.' : 'Your library awaits.';
   $('#login-description').textContent = loginNeedsSetup
-    ? session.setupAllowed ? 'Create an administrator password (at least 12 characters) before enabling public access.' : 'Open http://127.0.0.1:7000 on the server to create your administrator password first.'
+    ? session.deployment === 'cloudflare' ? 'Configure the Cloudflare Worker secrets using the deployment guide before signing in.' : session.setupAllowed ? 'Create an administrator password (at least 12 characters) before enabling public access.' : 'Open http://127.0.0.1:7000 on the server to create your administrator password first.'
     : 'Sign in to manage your subtitles.';
   $('#confirm-password-group').hidden = !loginNeedsSetup || !session.setupAllowed;
   $('#confirm-password').required = loginNeedsSetup && session.setupAllowed;
@@ -83,6 +83,12 @@ function renderLibrary() {
 async function loadLibrary() { const result = await api('/api/subtitles'); rows = result.subtitles; renderLibrary(); }
 async function loadConfig() {
   config = await api('/api/config');
+  const cloud = config.deployment === 'cloudflare';
+  $('#network-step').hidden = cloud;
+  $('#settings-form').hidden = cloud;
+  $('#addon-step-number').textContent = cloud ? '1' : '3';
+  $('#connection-intro').textContent = cloud ? 'Your library is hosted on Cloudflare. Your PC can be off; playback devices need internet and a compatible Stremio client.' : 'Only the server needs Tailscale. Your playback devices use the public HTTPS addon address.';
+  $('#server-status').textContent = cloud ? 'Cloud library online' : 'Server online';
   $('#server-address').textContent = new URL(config.baseUrl).host;
   $('#base-url').value = config.baseUrl;
   $('#base-url').disabled = config.baseUrlLocked;
@@ -95,10 +101,10 @@ async function loadConfig() {
     : config.tailscale.running ? 'Tailscale is connected on the server. Enable Funnel to let devices connect without Tailscale.' : 'Install Tailscale on this server only, sign in, then enable public access here.';
   $('#enable-public').disabled = !config.networkSetupAllowed || !config.tailscale.running;
   $('#enable-public').textContent = config.tailscale.publicEnabled ? 'Refresh public access' : 'Enable public access';
-  $('#local-address-note').textContent = /^https:\/\//.test(config.baseUrl)
+  $('#local-address-note').textContent = cloud ? /^https:\/\//.test(config.baseUrl) ? 'Your cloud library works while your PC is off. Use this address in a compatible Stremio client.' : 'This is a local cloud preview. Deploy the Worker to obtain the public HTTPS addon address.' : /^https:\/\//.test(config.baseUrl)
     ? 'Use this address on any device with a compatible Stremio client. Reinstall the addon if you previously used a different address.'
     : 'This local address only works on the server. Enable public HTTPS access for your other devices.';
-  $('#auth-note').textContent = 'Library management requires your password. The addon address contains a read-only access key; share it only with your own devices. Enable Funnel from the local server interface.';
+  $('#auth-note').textContent = cloud ? 'Library management requires your administrator password. Keep the addon address private: it grants read-only access to your subtitles. No Tailscale or device helper is required. New uploads may take about a minute to become available on other devices.' : 'Library management requires your password. The addon address contains a read-only access key; share it only with your own devices. Enable Funnel from the local server interface.';
   $('#logout').hidden = !config.passwordEnabled;
 }
 async function initialize() {
@@ -224,7 +230,7 @@ $('#upload-form').addEventListener('submit', async event => {
     const result = await api('/api/subtitles', { method: 'POST', body: new FormData($('#upload-form')) });
     await loadLibrary();
     $('#file').value = ''; await fileChanged();
-    toast(result.duplicate ? 'These subtitles are already in your library.' : 'Subtitles saved and available in the addon.');
+    toast(result.duplicate ? 'These subtitles are already in your library.' : config.deployment === 'cloudflare' ? 'Subtitles saved. Other devices may need about a minute to see the new file.' : 'Subtitles saved and available in the addon.');
   } catch (error) { showError('#upload-error', error); }
   finally { $('#upload-submit').disabled = false; }
 });

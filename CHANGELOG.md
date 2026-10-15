@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.0
+
+- Add Cloudflare Workers hosting with persistent D1 metadata and KV subtitle files.
+- Keep the hosted addon available while the PC is off, without Tailscale or a device helper.
+- Protect cloud administration with Worker secrets, revocable sessions, password rotation, and persistent login attempt limits.
+- Preserve live search, upload validation, exact movie and episode matches, and deletion in the hosted interface.
+- Add repeatable provisioning, private generated credentials, deployment instructions, and cloud integration tests.
+- Adapt Connection for the hosted HTTPS address and explain KV propagation delays.
+
 ## 1.2.0
 
 - Check for newer stable GitHub releases when the installed Windows application starts.

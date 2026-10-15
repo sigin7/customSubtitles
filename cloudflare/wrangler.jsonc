@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "custom-subtitles",
+  "main": "worker.js",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": { "directory": "../public", "binding": "ASSETS", "run_worker_first": true },
+  "d1_databases": [{ "binding": "DB", "database_name": "custom-subtitles", "database_id": "00000000-0000-0000-0000-000000000000" }],
+  "kv_namespaces": [{ "binding": "FILES", "id": "00000000000000000000000000000000" }],
+  "observability": { "enabled": false }
+}

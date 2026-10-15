@@ -10,3 +10,8 @@ Thumbs.db
 dist/
 .build/
 .installed
+.wrangler/
+.dev.vars*
+!.dev.vars.example
+.cloudflare-secrets.local.json
+wrangler.local.json

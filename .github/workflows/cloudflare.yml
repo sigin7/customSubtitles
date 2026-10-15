@@ -1,0 +1,33 @@
+name: Cloudflare runtime
+on:
+  push:
+  pull_request:
+jobs:
+  runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install Cloudflare development tools
+        run: npm install --prefix cloudflare
+      - name: Test real Workers, D1, KV, and asset bindings
+        shell: bash
+        run: |
+          cp cloudflare/.dev.vars.example cloudflare/.dev.vars
+          node cloudflare/node_modules/wrangler/bin/wrangler.js d1 execute custom-subtitles --local --file schema.sql --config cloudflare/wrangler.jsonc
+          node cloudflare/node_modules/wrangler/bin/wrangler.js dev --config cloudflare/wrangler.jsonc --ip 127.0.0.1 --port 18787 > "$RUNNER_TEMP/cloudflare.log" 2>&1 &
+          helper_pid=$!
+          trap 'kill "$helper_pid" 2>/dev/null || true' EXIT
+          ready=false
+          for attempt in {1..60}; do
+            if curl --silent --fail http://127.0.0.1:18787/api/session > /dev/null; then ready=true; break; fi
+            if ! kill -0 "$helper_pid" 2>/dev/null; then cat "$RUNNER_TEMP/cloudflare.log"; exit 1; fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then cat "$RUNNER_TEMP/cloudflare.log"; exit 1; fi
+          node scripts/smoke-cloudflare.mjs http://127.0.0.1:18787 --local
