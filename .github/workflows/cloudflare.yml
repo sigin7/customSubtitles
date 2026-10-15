@@ -19,7 +19,7 @@ jobs:
         shell: bash
         run: |
           cp cloudflare/.dev.vars.example cloudflare/.dev.vars
-          node cloudflare/node_modules/wrangler/bin/wrangler.js d1 execute custom-subtitles --local --file schema.sql --config cloudflare/wrangler.jsonc
+          node cloudflare/node_modules/wrangler/bin/wrangler.js d1 execute custom-subtitles --local --file cloudflare/schema.sql --config cloudflare/wrangler.jsonc
           node cloudflare/node_modules/wrangler/bin/wrangler.js dev --config cloudflare/wrangler.jsonc --ip 127.0.0.1 --port 18787 > "$RUNNER_TEMP/cloudflare.log" 2>&1 &
           helper_pid=$!
           trap 'kill "$helper_pid" 2>/dev/null || true' EXIT
